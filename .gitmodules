@@ -1,0 +1,9 @@
+[submodule "libraries/misc"]
+	path = libraries/misc
+	url = git@github.com:jdfin/pico_libraries_misc.git
+[submodule "libraries/touchscreen"]
+	path = libraries/touchscreen
+	url = git@github.com:jdfin/pico_libraries_touchscreen.git
+[submodule "libraries/framebuffer"]
+	path = libraries/framebuffer
+	url = git@github.com:jdfin/pico_libraries_framebuffer.git
