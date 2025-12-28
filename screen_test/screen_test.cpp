@@ -14,7 +14,7 @@
 //
 #include "color.h"
 #include "font.h"
-#include "roboto_32.h"
+//#include "roboto_32.h"
 //
 #include "gt911.h"
 #include "st7796.h"
@@ -58,7 +58,7 @@ static const int tp_scl_pin = 5;
 static const int tp_rst_pin = 6;
 static const int tp_int_pin = 7;
 
-static const Font &font = roboto_32;
+//static const Font &font = roboto_32;
 
 // for st7796
 [[maybe_unused]]
@@ -82,7 +82,7 @@ static void reinit_screen(St7796 &st7796)
     st7796.rotation(St7796::Rotation::left);
 
     // fill with black
-    st7796.fill_rect(0, 0, st7796.width(), st7796.height(), Color::black);
+    st7796.fill_rect(0, 0, st7796.width(), st7796.height(), Color::black());
 }
 
 
@@ -93,7 +93,7 @@ int main()
 
     SysLed::pattern(50, 950);
 
-#if 0
+#if 1
     while (!stdio_usb_connected()) {
         SysLed::loop();
         tight_loop_contents();
@@ -148,10 +148,11 @@ int main()
     do {
         //test_1(gt911); sleep_ms(1000);
         //test_2(gt911); sleep_ms(10);
-        test_3(gt911, st7796);
-        sleep_ms(10);
+        test_3(gt911, st7796); sleep_ms(10);
         //rotations(gt911);
     } while (true);
+
+    sleep_ms(100);
 
     return 0;
 }
@@ -230,20 +231,20 @@ static void test_3(Gt911 &ts, Framebuffer &fb)
             return; // already drawn, and point didn't move
         if (old_h >= 0 && old_v >= 0) {
             // erase previous crosshairs
-            fb.line(0, old_v, fb.width() - 1, old_v, Color::black);
-            fb.line(old_h, 0, old_h, fb.height() - 1, Color::black);
+            fb.line(0, old_v, fb.width() - 1, old_v, Color::black());
+            fb.line(old_h, 0, old_h, fb.height() - 1, Color::black());
             old_h = -1;
             old_v = -1;
         }
         // draw crosshairs at the touch point
-        fb.line(0, v, fb.width() - 1, v, Color::white);
-        fb.line(h, 0, h, fb.height() - 1, Color::white);
+        fb.line(0, v, fb.width() - 1, v, Color::white());
+        fb.line(h, 0, h, fb.height() - 1, Color::white());
         old_h = h;
         old_v = v;
     } else if (old_h >= 0 && old_v >= 0) {
         // erase previous crosshairs
-        fb.line(0, old_v, fb.width() - 1, old_v, Color::black);
-        fb.line(old_h, 0, old_h, fb.height() - 1, Color::black);
+        fb.line(0, old_v, fb.width() - 1, old_v, Color::black());
+        fb.line(old_h, 0, old_h, fb.height() - 1, Color::black());
         old_h = -1;
         old_v = -1;
     }
