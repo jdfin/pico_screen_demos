@@ -143,7 +143,7 @@ int main()
     //gt911.dump();
     //sleep_ms(1000);
 
-    st7796.draw_rect(0, 0, st7796.width(), st7796.height(), Color::green);
+    st7796.draw_rect(0, 0, st7796.width(), st7796.height(), Color::green());
 
     do {
         //test_1(gt911); sleep_ms(1000);
