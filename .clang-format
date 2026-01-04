@@ -3,9 +3,9 @@ BasedOnStyle: Google
 
 AccessModifierOffset: -4
 AllowShortBlocksOnASingleLine: Never
-AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
-#AllowShortLoopsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false # default: true
 BraceWrapping:
   AfterClass: true
   AfterFunction: true
