@@ -1,23 +1,22 @@
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
-//
-#include "hardware/i2c.h"
+// pico
 #include "hardware/spi.h"
 #include "pico/stdio.h"
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
-//
+// misc
+#include "i2c_dev.h"
 #include "sys_led.h"
-#include "touchscreen.h"
-#include "xassert.h"
-//
+// framebuffer
 #include "color.h"
 #include "font.h"
-//#include "roboto_32.h"
-//
-#include "gt911.h"
 #include "st7796.h"
+// touchscreen
+#include "gt911.h"
+#include "touchscreen.h"
 
 // Pico
 //        +----------| USB |----------+
@@ -70,19 +69,16 @@ static const int i2c_freq = 400'000;
 
 static const uint8_t tp_adrs = 0x14; // 0x14 or 0x5d
 
-static void test_1(Gt911 &ts);
-static void test_2(Gt911 &ts);
-static void test_3(Gt911 &ts, Framebuffer &fb);
-static void rotations(Gt911 &ts);
+static void test_1(Touchscreen &ts);
+static void test_2(Touchscreen &ts);
+static void test_3(Touchscreen &ts, Framebuffer &fb);
+static void rotations(Touchscreen &ts);
 
 
-static void reinit_screen(St7796 &st7796)
+static void reinit_screen(Framebuffer &fb)
 {
-    // landscape, connector to the left, (0, 0) in lower left
-    st7796.rotation(St7796::Rotation::left);
-
-    // fill with black
-    st7796.fill_rect(0, 0, st7796.width(), st7796.height(), Color::black());
+    fb.set_rotation(Framebuffer::Rotation::landscape);
+    fb.fill_rect(0, 0, fb.width(), fb.height(), Color::black());
 }
 
 
@@ -106,8 +102,8 @@ int main()
     // Display
 
     St7796 st7796(spi0, spi_miso_pin, spi_mosi_pin, spi_clk_pin, spi_cs_pin,
-                  spi_baud, lcd_cd_pin, lcd_rst_pin, lcd_led_pin, work,
-                  work_bytes);
+                  spi_baud, lcd_cd_pin, lcd_rst_pin, lcd_led_pin, 480, 320,
+                  work, work_bytes);
 
     printf("St7796: spi running at %lu Hz\n", st7796.spi_freq());
 
@@ -124,33 +120,40 @@ int main()
 
     // Touchscreen
 
+#if 1
+    I2cDev i2c_dev(i2c0, tp_scl_pin, tp_sda_pin, i2c_freq);
+    printf("Gt911: i2c running at %u Hz\n", i2c_dev.baud());
+    Gt911 gt911(i2c_dev, tp_adrs, tp_rst_pin, tp_int_pin);
+#else
     Gt911 gt911(i2c0, tp_adrs, tp_sda_pin, tp_scl_pin, tp_rst_pin, tp_int_pin,
                 i2c_freq);
-
     printf("Gt911: i2c running at %u Hz\n", gt911.i2c_freq());
+#endif
 
     constexpr int verbosity = 2;
     if (!gt911.init(verbosity)) {
         printf("Gt911: ERROR initializing\n");
-        xassert(false);
+        assert(false);
     }
     printf("Gt911: ready\n");
 
-    gt911.rotation(Gt911::Rotation::left);
+    Framebuffer &fb = st7796;
+    Touchscreen &ts = gt911;
+
+    fb.set_rotation(Framebuffer::Rotation::landscape);
+    ts.set_rotation(Touchscreen::Rotation::landscape);
 
     sleep_ms(100);
 
-    //gt911.dump();
-    //sleep_ms(1000);
+    fb.draw_rect(0, 0, fb.width(), fb.height(), Color::lime());
 
-    st7796.draw_rect(0, 0, st7796.width(), st7796.height(), Color::green());
-
-    do {
+    while (true) {
         //test_1(gt911); sleep_ms(1000);
         //test_2(gt911); sleep_ms(10);
-        test_3(gt911, st7796); sleep_ms(10);
+        test_3(gt911, fb);
+        sleep_ms(10);
         //rotations(gt911);
-    } while (true);
+    }
 
     sleep_ms(100);
 
@@ -158,20 +161,20 @@ int main()
 }
 
 
-static void poll_touch(Gt911 &ts)
+static void poll_touch(Touchscreen &ts)
 {
-    int x1, y1;
-    int cnt = ts.get_touch(x1, y1);
+    int col, row;
+    int cnt = ts.get_touch(col, row);
     printf("cnt=%d", cnt);
-    if (cnt >= 1)
-        printf(" (%d,%d)", x1, y1);
+    while (cnt-- > 0)
+        printf(" (%d,%d)", col, row);
     printf("\n");
 }
 
 
 // read and print touch info once
 [[maybe_unused]]
-static void test_1(Gt911 &ts)
+static void test_1(Touchscreen &ts)
 {
     poll_touch(ts);
 }
@@ -179,24 +182,24 @@ static void test_1(Gt911 &ts)
 
 // read status and report touches only if something changed
 [[maybe_unused]]
-static void test_2(Gt911 &ts)
+static void test_2(Touchscreen &ts)
 {
     constexpr int t_max = 5;
 
-    static int x[t_max] = {-1, -1, -1, -1, -1};
-    static int y[t_max] = {-1, -1, -1, -1, -1};
+    static int col[t_max] = {-1, -1, -1, -1, -1};
+    static int row[t_max] = {-1, -1, -1, -1, -1};
     static int cnt = -1;
 
-    int new_x[t_max];
-    int new_y[t_max];
-    int new_cnt = ts.get_touches(new_x, new_y, t_max);
+    int new_col[t_max];
+    int new_row[t_max];
+    int new_cnt = ts.get_touches(new_col, new_row, t_max);
 
     bool changed = false;
     if (new_cnt != cnt) {
         changed = true;
     } else {
         for (int t = 0; t < new_cnt; t++) {
-            if (new_x[t] != x[t] || new_y[t] != y[t]) {
+            if (new_col[t] != col[t] || new_row[t] != row[t]) {
                 changed = true;
                 break;
             }
@@ -204,79 +207,78 @@ static void test_2(Gt911 &ts)
     }
 
     for (int t = 0; t < t_max; t++) {
-        x[t] = new_x[t];
-        y[t] = new_y[t];
+        col[t] = new_col[t];
+        row[t] = new_row[t];
     }
     cnt = new_cnt;
 
     if (changed) {
         printf("cnt=%d", cnt);
-        for (int t = 0; t < cnt; t++) printf(" (%d,%d)", x[t], y[t]);
+        for (int t = 0; t < cnt; t++) //
+            printf(" (%d,%d)", col[t], row[t]);
         printf("\n");
     }
 }
 
 
 [[maybe_unused]]
-static void test_3(Gt911 &ts, Framebuffer &fb)
+static void test_3(Touchscreen &ts, Framebuffer &fb)
 {
-    static int old_h = -1;
-    static int old_v = -1;
+    static int old_col = -1;
+    static int old_row = -1;
 
-    int h, v;
-    int cnt = ts.get_touch(h, v);
-
-    if (cnt >= 1) {
-        if (h == old_h && v == old_v)
+    int col, row;
+    if (ts.get_touch(col, row) >= 1) {
+        if (col == old_col && row == old_row)
             return; // already drawn, and point didn't move
-        if (old_h >= 0 && old_v >= 0) {
+        if (old_col >= 0 && old_row >= 0) {
             // erase previous crosshairs
-            fb.line(0, old_v, fb.width() - 1, old_v, Color::black());
-            fb.line(old_h, 0, old_h, fb.height() - 1, Color::black());
-            old_h = -1;
-            old_v = -1;
+            fb.line(0, old_row, fb.width() - 1, old_row, Color::black());
+            fb.line(old_col, 0, old_col, fb.height() - 1, Color::black());
+            old_col = -1;
+            old_row = -1;
         }
         // draw crosshairs at the touch point
-        fb.line(0, v, fb.width() - 1, v, Color::white());
-        fb.line(h, 0, h, fb.height() - 1, Color::white());
-        old_h = h;
-        old_v = v;
-    } else if (old_h >= 0 && old_v >= 0) {
+        fb.line(0, row, fb.width() - 1, row, Color::white());
+        fb.line(col, 0, col, fb.height() - 1, Color::white());
+        old_col = col;
+        old_row = row;
+    } else if (old_col >= 0 && old_row >= 0) {
         // erase previous crosshairs
-        fb.line(0, old_v, fb.width() - 1, old_v, Color::black());
-        fb.line(old_h, 0, old_h, fb.height() - 1, Color::black());
-        old_h = -1;
-        old_v = -1;
+        fb.line(0, old_row, fb.width() - 1, old_row, Color::black());
+        fb.line(old_col, 0, old_col, fb.height() - 1, Color::black());
+        old_col = -1;
+        old_row = -1;
     }
 }
 
 
 [[maybe_unused]]
-static void rotations(Gt911 &ts)
+static void rotations(Touchscreen &ts)
 {
-    ts.rotation(Gt911::Rotation::bottom);
-    printf("rotation: bottom\n");
+    ts.set_rotation(Touchscreen::Rotation::landscape);
+    printf("Rotation::landscape\n");
     for (int i = 0; i < 10; i++) {
         poll_touch(ts);
         sleep_ms(200);
     }
 
-    ts.rotation(Gt911::Rotation::left);
-    printf("rotation: left\n");
+    ts.set_rotation(Touchscreen::Rotation::portrait);
+    printf("Rotation::portrait\n");
     for (int i = 0; i < 10; i++) {
         poll_touch(ts);
         sleep_ms(200);
     }
 
-    ts.rotation(Gt911::Rotation::top);
-    printf("rotation: top\n");
+    ts.set_rotation(Touchscreen::Rotation::landscape2);
+    printf("Rotation::landscape2\n");
     for (int i = 0; i < 10; i++) {
         poll_touch(ts);
         sleep_ms(200);
     }
 
-    ts.rotation(Gt911::Rotation::right);
-    printf("rotation: right\n");
+    ts.set_rotation(Touchscreen::Rotation::portrait2);
+    printf("Rotation::portrait2\n");
     for (int i = 0; i < 10; i++) {
         poll_touch(ts);
         sleep_ms(200);

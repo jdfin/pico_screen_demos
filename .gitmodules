@@ -7,3 +7,6 @@
 [submodule "libraries/framebuffer"]
 	path = libraries/framebuffer
 	url = git@github.com:jdfin/pico_libraries_framebuffer.git
+[submodule "libraries/gui"]
+	path = libraries/gui
+	url = git@github.com:jdfin/pico_libraries_gui.git
