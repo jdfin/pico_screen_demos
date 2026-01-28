@@ -27,50 +27,16 @@
 #include "gui_number.h"
 #include "gui_page.h"
 #include "gui_slider.h"
+//
+#include "throttle_cfg.h"
 
 using HAlign = Framebuffer::HAlign;
 
 using Event = Touchscreen::Event;
 
-// Pico
-//              +------| USB |------+
-//            1 | D0       VBUS_OUT | 40
-//            2 | D1        VSYS_IO | 39
-//            3 | GND           GND | 38
-//            4 | D2         3V3_EN | 37
-//            5 | D3        3V3_OUT | 36
-// (ts) SDA   6 | D4           AREF | 35
-// (ts) SCL   7 | D5            D28 | 34
-//            8 | GND           GND | 33
-// (ts) RST   9 | D6            D27 | 32
-// (ts) INT  10 | D7            D26 | 31
-//           11 | D8            RUN | 30
-//           12 | D9            D22 | 29  LED  (fb)
-//           13 | GND           GND | 28
-//           14 | D10           D21 | 27  RST  (fb)
-//           15 | D11           D20 | 26  CD   (fb)
-//           16 | D12           D19 | 25  MOSI (fb)
-//           17 | D13           D18 | 24  SCK  (fb)
-//           18 | GND           GND | 23
-//           19 | D14           D17 | 22  CS   (fb)
-//           20 | D15           D16 | 21  MISO (fb)
-//              +-------------------+
-
-static const int spi_miso_pin = 16;
-static const int spi_mosi_pin = 19;
-static const int spi_clk_pin = 18;
-static const int spi_cs_pin = 17;
 static const int spi_baud_request = 15'000'000;
 static int spi_baud_actual = 0;
 
-static const int fb_cd_pin = 20;
-static const int fb_rst_pin = 21;
-static const int fb_led_pin = 22;
-
-static const int i2c_sda_pin = 4;
-static const int i2c_scl_pin = 5;
-static const int tp_rst_pin = 6;
-static const int tp_int_pin = 7;
 static const uint i2c_baud_request = 400'000;
 static uint i2c_baud_actual = 0;
 static const uint8_t tp_i2c_addr = 0x14; // 0x14 or 0x5d
@@ -78,11 +44,11 @@ static const uint8_t tp_i2c_addr = 0x14; // 0x14 or 0x5d
 static const int work_bytes = 128;
 static uint8_t work[work_bytes];
 
-static St7796 fb(spi0, spi_miso_pin, spi_mosi_pin, spi_clk_pin, spi_cs_pin,
+static St7796 fb(spi_inst, spi_miso_pin, spi_mosi_pin, spi_clk_pin, spi_cs_pin,
                  spi_baud_request, fb_cd_pin, fb_rst_pin, fb_led_pin, 480, 320,
                  work, work_bytes);
 
-static I2cDev i2c_dev(i2c0, i2c_scl_pin, i2c_sda_pin, i2c_baud_request);
+static I2cDev i2c_dev(i2c_inst, i2c_scl_pin, i2c_sda_pin, i2c_baud_request);
 
 static Gt911 ts(i2c_dev, tp_i2c_addr, tp_rst_pin, tp_int_pin);
 
