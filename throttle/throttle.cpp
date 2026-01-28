@@ -28,29 +28,30 @@
 #include "gui_page.h"
 #include "gui_slider.h"
 //
-#include "throttle_cfg.h"
+#include "fb_gpio_cfg.h"
+#include "ts_gpio_cfg.h"
 
 using HAlign = Framebuffer::HAlign;
 
 using Event = Touchscreen::Event;
 
-static const int spi_baud_request = 15'000'000;
-static int spi_baud_actual = 0;
+static const int fb_spi_baud_request = 15'000'000;
+static int fb_spi_baud_actual = 0;
 
-static const uint i2c_baud_request = 400'000;
-static uint i2c_baud_actual = 0;
-static const uint8_t tp_i2c_addr = 0x14; // 0x14 or 0x5d
+static const uint ts_i2c_baud_request = 400'000;
+static uint ts_i2c_baud_actual = 0;
+static const uint8_t ts_i2c_addr = 0x14; // 0x14 or 0x5d
 
 static const int work_bytes = 128;
 static uint8_t work[work_bytes];
 
-static St7796 fb(spi_inst, spi_miso_pin, spi_mosi_pin, spi_clk_pin, spi_cs_pin,
-                 spi_baud_request, fb_cd_pin, fb_rst_pin, fb_led_pin, 480, 320,
+static St7796 fb(fb_spi_inst, fb_spi_miso_gpio, fb_spi_mosi_gpio, fb_spi_clk_gpio, fb_spi_cs_gpio,
+                 fb_spi_baud_request, fb_cd_gpio, fb_rst_gpio, fb_led_gpio, 480, 320,
                  work, work_bytes);
 
-static I2cDev i2c_dev(i2c_inst, i2c_scl_pin, i2c_sda_pin, i2c_baud_request);
+static I2cDev i2c_dev(ts_i2c_inst, ts_i2c_scl_gpio, ts_i2c_sda_gpio, ts_i2c_baud_request);
 
-static Gt911 ts(i2c_dev, tp_i2c_addr, tp_rst_pin, tp_int_pin);
+static Gt911 ts(i2c_dev, ts_i2c_addr, ts_rst_gpio, ts_int_gpio);
 
 static constexpr Color screen_bg = Color::white();
 static constexpr Color screen_fg = Color::black();
@@ -476,23 +477,23 @@ int main()
     Argv argv(1); // verbosity == 1 means echo
 
     // initialize framebuffer
-    spi_baud_actual = fb.spi_freq();
+    fb_spi_baud_actual = fb.spi_freq();
     fb.init();
     fb.set_rotation(Framebuffer::Rotation::landscape); // connector to the left
     fb.fill_rect(0, 0, fb.width(), fb.height(), screen_bg);
     fb.brightness(100);
     printf("framebuffer ready");
-    //printf(" (spi @ %d Hz)\n", spi_baud_actual);
+    //printf(" (spi @ %d Hz)\n", fb_spi_baud_actual);
     printf("\n");
 
     nav_click(0); // start out on page 0
 
     // initialize touchscreen
-    i2c_baud_actual = i2c_dev.baud();
+    ts_i2c_baud_actual = i2c_dev.baud();
     assert(ts.init());
     ts.set_rotation(Touchscreen::Rotation::landscape);
     printf("touchscreen ready");
-    //printf(" (i2c @ %u Hz)\n", i2c_baud_actual);
+    //printf(" (i2c @ %u Hz)\n", ts_i2c_baud_actual);
     printf("\n");
 
     sleep_ms(100);

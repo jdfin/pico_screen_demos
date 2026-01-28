@@ -1,6 +1,5 @@
 #pragma once
 
-#include "hardware/i2c.h"
 #include "hardware/spi.h"
 
 #if 1
@@ -28,24 +27,18 @@
 //            20 | D15           D16 | 21  MISO (fb)
 //               +-------------------+
 
-constexpr int spi_miso_pin = 16;
-constexpr int spi_mosi_pin = 19;
-constexpr int spi_clk_pin = 18;
-constexpr int spi_cs_pin = 17;
-spi_inst_t* const spi_inst = spi0;
+constexpr int fb_spi_miso_gpio = 16;
+constexpr int fb_spi_mosi_gpio = 19;
+constexpr int fb_spi_clk_gpio = 18;
+constexpr int fb_spi_cs_gpio = 17;
+spi_inst_t* const fb_spi_inst = spi0;
 
-constexpr int fb_cd_pin = 20;
-constexpr int fb_rst_pin = 21;
-constexpr int fb_led_pin = 22;
-
-constexpr int i2c_sda_pin = 4;
-constexpr int i2c_scl_pin = 5;
-i2c_inst_t* const i2c_inst = i2c0;
-
-constexpr int tp_rst_pin = 6;
-constexpr int tp_int_pin = 7;
+constexpr int fb_cd_gpio = 20;
+constexpr int fb_rst_gpio = 21;
+constexpr int fb_led_gpio = 22;
 
 #else
+
 //               +------| USB |------+
 //  (ts) SDA   1 | D0       VBUS_OUT | 40
 //  (ts) SCL   2 | D1        VSYS_IO | 39
@@ -68,5 +61,15 @@ constexpr int tp_int_pin = 7;
 //         1  19 | D14           D17 | 22  4
 //         2  20 | D15           D16 | 21  3
 //               +-------------------+
+
+constexpr int fb_spi_miso_gpio = 4;
+constexpr int fb_spi_mosi_gpio = 7;
+constexpr int fb_spi_clk_gpio = 6;
+constexpr int fb_spi_cs_gpio = 5;
+spi_inst_t* const fb_spi_inst = spi0;
+
+constexpr int fb_cd_gpio = 8;
+constexpr int fb_rst_gpio = 9;
+constexpr int fb_led_gpio = 12;
 
 #endif
