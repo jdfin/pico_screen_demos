@@ -36,5 +36,4 @@ add_compile_options(-Wall -Wextra -Werror)
 # see include files
 #add_compile_options(-H)
 
-add_subdirectory(throttle)
 add_subdirectory(libraries)
