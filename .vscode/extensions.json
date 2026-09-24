@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "marus25.cortex-debug",
+        "mhutchie.git-graph",
         "ms-vscode.cpptools",
         "ms-vscode.cpptools-extension-pack",
         "ms-vscode.vscode-serial-monitor",
