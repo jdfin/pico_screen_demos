@@ -124,6 +124,12 @@ All three display drivers (and `Gt911`, on touchscreen-capable boards) use the s
 
 **St7789v:** physical panel is also portrait (240w x 320h) silicon (4D Systems 4DLCD-24320240-IPS), width/height likewise fixed at compile time - see "4D Systems 4DLCD-24320240-IPS" below.
 
+### St7796 Boards (Waveshare / QDtech MSP352x)
+
+`St7796` supports two boards: Waveshare's (no meaningful part number, so `St7796::Model::Ws35` - "35" for the panel's ~3.5" - is this project's own name, not a vendor part number) and a ShenZhen QDtech panel, part number MSP3525 (no touch) or MSP3526 (capacitive touch) - `Model::Msp352x` covers both, since they don't need different init sequences here (this driver doesn't touch the touch controller). The two models need genuinely different power-on register sequences (different registers, different values - not just a MADCTL bit like the Newhaven parts), so `init()` branches on `_model` at runtime rather than needing separate classes; `Model` is a runtime constructor argument, same pattern as `St7789vi::Model`.
+
+`st7796_ws35_test`/`st7796_msp352x_test` (`libraries/framebuffer/test/st7796_ws35_test.cpp`/`st7796_msp352x_test.cpp`) each just fix a different `Model` value at construction - no source editing needed to target a specific board. They share `fb_gpio_cfg.h` (same pin roles either way) and, like every other display test, `fb_tests.cpp` for the test/demo suite.
+
 ### Newhaven ST7789Vi Displays
 
 `St7789vi` (`libraries/framebuffer/include/st7789vi.h`, `src/st7789vi.cpp`) supports three Newhaven NHD-2.4-240320 parts, all SPI, all 240x320, none with a touchscreen:
@@ -133,7 +139,7 @@ All three display drivers (and `Gt911`, on touchscreen-capable boards) use the s
 
 All three parts share the same physical size and differ only in one confirmed hardware difference - the MADCTL RGB/BGR color-order bit - so the panel choice is a runtime constructor argument (`St7789vi::Model`), not a compile-time switch: any single build of the driver works for all three parts, just by passing a different `Model` value. `St7789vi`'s constructor still doesn't take width/height like `St7796`'s does, since the physical size (240x320) really is fixed across the whole family.
 
-The three `st7789vi_*_test` executables (`libraries/framebuffer/test/st7789vi_bsxv_f_test.cpp`, `st7789vi_af_ctxp_test.cpp`, `st7789vi_af_csxp_test.cpp`) each just fix a different `Model` value at construction - no source editing needed to target a specific part, build and flash the matching `.uf2`. They're otherwise identical and, like `st7796_test`, share `libraries/framebuffer/test/fb_tests.cpp` for the actual test/demo suite.
+The three `st7789vi_*_test` executables (`libraries/framebuffer/test/st7789vi_bsxv_f_test.cpp`, `st7789vi_af_ctxp_test.cpp`, `st7789vi_af_csxp_test.cpp`) each just fix a different `Model` value at construction - no source editing needed to target a specific part, build and flash the matching `.uf2`. They're otherwise identical and, like `st7796_ws35_test`/`st7796_msp352x_test`, share `libraries/framebuffer/test/fb_tests.cpp` for the actual test/demo suite.
 
 `libraries/framebuffer/include/st7789vi_cmd.h` holds the ST7789Vi command opcodes. Despite sharing some opcode values with `st7796_cmd.h`, several vendor-specific (Table 2) registers mean different things on the two controllers (e.g. `0xb7` is `GCTRL` on ST7789Vi but `EM` on ST7796) - don't reuse one command table for the other chip.
 
@@ -145,7 +151,7 @@ The three `st7789vi_*_test` executables (`libraries/framebuffer/test/st7789vi_bs
 
 ST7789V is a related but distinct chip from ST7789Vi (the Newhaven parts' controller, above) - not another `St7789vi::Model`. Its own vendor sample init sequence (from 4D Systems' datasheet page, resources.4dsystems.com.au) uses different power/gamma tuning throughout, needs `INVON` (Display Inversion On) where the Newhaven parts don't, and writes two registers (`RAMCTRL`, `RGBCTRL`) that don't appear in Newhaven's sample at all - so it gets its own command table, `libraries/framebuffer/include/st7789v_cmd.h`. `St7789v::init()` is transcribed from that vendor sequence, including its apparent redundancy (several registers get written once with default values, then again with final tuning) rather than collapsing it to just the final values, since this display is untested by this project beyond that transcription. As with `St7789vi`, only `Rotation::portrait`'s MADCTL byte (`0x00`, matching the vendor sample's own default) is confirmed; the other three rotations use the standard MX/MV/MY combinations, unverified.
 
-`st7789v_test` (`libraries/framebuffer/test/st7789v_test.cpp`) follows the same pattern as `st7796_test`/`st7789vi_*_test`, sharing `fb_tests.cpp` for the test/demo suite.
+`st7789v_test` (`libraries/framebuffer/test/st7789v_test.cpp`) follows the same pattern as `st7796_ws35_test`/`st7796_msp352x_test`/`st7789vi_*_test`, sharing `fb_tests.cpp` for the test/demo suite.
 
 ### DMA Architecture
 
@@ -170,8 +176,8 @@ The project uses a custom clang-format configuration (`.clang-format`):
 ### Running Tests
 
 Test executables are built automatically:
-- `build/libraries/framebuffer/test/st7796_test.uf2` - ST7796 (Waveshare) display driver test
-- `build/libraries/framebuffer/test/st7789vi_bsxv_f_test.uf2`, `st7789vi_af_ctxp_test.uf2`, `st7789vi_af_csxp_test.uf2` - ST7789Vi (Newhaven) display driver test, one executable per supported part, each with `St7789vi::Model` fixed - no source editing needed to switch parts, just flash the right `.uf2`. All three share `fb_tests.cpp` with `st7796_test` (see below).
+- `build/libraries/framebuffer/test/st7796_ws35_test.uf2`, `st7796_msp352x_test.uf2` - ST7796 display driver test, one executable per board (Waveshare/QDtech MSP352x), each with `St7796::Model` fixed - no source editing needed to switch boards, just flash the right `.uf2`
+- `build/libraries/framebuffer/test/st7789vi_bsxv_f_test.uf2`, `st7789vi_af_ctxp_test.uf2`, `st7789vi_af_csxp_test.uf2` - ST7789Vi (Newhaven) display driver test, one executable per supported part, each with `St7789vi::Model` fixed - no source editing needed to switch parts, just flash the right `.uf2`. All three share `fb_tests.cpp` with `st7796_ws35_test`/`st7796_msp352x_test` (see below).
 - `build/libraries/framebuffer/test/st7789v_test.uf2` - ST7789V (4D Systems 4DLCD-24320240-IPS, older batch) display driver test; also shares `fb_tests.cpp`.
 - `build/libraries/gui/test/gui_test.uf2` - GUI widget test (ST7796 + touchscreen)
 - `build/libraries/touchscreen/test/gt911_test.uf2`, `ft6336u_test.uf2` - touchscreen driver tests
